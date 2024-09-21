@@ -1,4 +1,5 @@
 import os
+import asyncio
 import discord
 from discord.ext import commands
 import json
@@ -6,6 +7,7 @@ import random
 import string
 import time
 import re
+import subprocess
 
 # Define intents
 intents = discord.Intents.default()
@@ -118,6 +120,13 @@ def admin_required():
 @bot.event
 async def on_ready():
     print(f'Logged on as {bot.user}!')
+    # Start auto_commit.py in the background
+    asyncio.create_task(run_auto_commit())
+
+async def run_auto_commit():
+    while True:
+        subprocess.run(["python3", "auto_commit.py"])
+        await asyncio.sleep(60)  # Adjust the sleep time as needed
 
 @bot.event
 async def on_message(message):

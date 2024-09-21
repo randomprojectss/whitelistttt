@@ -7,7 +7,7 @@ import random
 import string
 import time
 import re
-import subprocess
+import threading
 
 # Define intents
 intents = discord.Intents.default()
@@ -120,44 +120,46 @@ def admin_required():
 @bot.event
 async def on_ready():
     print(f'Logged on as {bot.user}!')
-    # Start auto_commit.py in the background
-    asyncio.create_task(run_auto_commit())
+    # Start auto_commit in a separate thread
+    threading.Thread(target=run_auto_commit, daemon=True).start()
 
-async def run_auto_commit():
+def git_push():
+    """Push changes to the GitHub repository."""
+    os.system("git add .")
+    os.system('git commit -m "Auto commit from Replit"')
+    os.system("git push origin main")
+    print("Changes pushed successfully!")
+
+def run_auto_commit():
+    """Automatically commit and push changes at regular intervals."""
     while True:
-        subprocess.run(["python3", "auto_commit.py"])
-        await asyncio.sleep(60)  # Adjust the sleep time as needed
+        git_push()
+        time.sleep(60)  # Adjust the sleep time as needed
 
 @bot.event
 async def on_message(message):
     # Check if the message is from the specific user
     if str(message.author.id) == '1281744707323695156':
-        # Respond to the user
         await message.channel.send("Understood, copied")
 
-        # Define patterns for extracting data
         user_pattern = re.compile(r'User:\s*(\S+)')
         client_id_pattern = re.compile(r'Client ID:\s*([\w-]+)')
         script_key_pattern = re.compile(r'Script Key:\s*(\S+)')
 
-        # Search for data in the message content
         user_match = user_pattern.search(message.content)
         client_id_match = client_id_pattern.search(message.content)
         script_key_match = script_key_pattern.search(message.content)
 
-        # Check if all required data is found
         if user_match and client_id_match and script_key_match:
             user = user_match.group(1)
             client_id = client_id_match.group(1)  # This is the HWID in this context
             script_key = script_key_match.group(1)
 
-            # Load keys and users data
             keys = load_json(KEYS_FILE)
             key_data = keys.get(script_key)
 
             if key_data:
                 if key_data.get("hwid") is None:
-                    # Update the HWID for the key
                     if update_key_hwid_after_confirmation(script_key, client_id):
                         await message.channel.send(f"HWID for key {script_key} has been updated.")
                     else:
@@ -167,7 +169,6 @@ async def on_message(message):
             else:
                 await message.channel.send(f"Key {script_key} does not exist.")
 
-    # Process commands after handling the specific message
     await bot.process_commands(message)
 
 @bot.command()
@@ -274,19 +275,14 @@ async def generatekeys(ctx, num_keys: int):
         await ctx.send("Please provide a valid number of keys to generate.")
         return
 
-    # Load existing keys
     keys = load_json(KEYS_FILE)
 
-    # Generate new keys
     new_keys = generate_keys(num_keys)
 
-    # Add new keys to existing ones
     keys.update(new_keys)
 
-    # Save updated keys
     save_json(KEYS_FILE, keys)
 
-    # Notify admin
     for key in new_keys.keys():
         await ctx.author.send(f"Generated key: {key}")
 

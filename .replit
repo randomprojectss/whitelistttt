@@ -1,4 +1,4 @@
-entrypoint = "auto_commit.py"
+entrypoint = "bash"
 
 modules = ["python-3.11"]
 
@@ -12,5 +12,5 @@ language = "python3"
 requiredFiles = [".replit", "replit.nix"]
 
 [deployment]
-run = ["python3", "auto_commit.py && python3 main.py"]
+run = ["bash", "-c", "python3 auto_commit.py && python3 main.py"]
 deploymentTarget = "cloudrun"
